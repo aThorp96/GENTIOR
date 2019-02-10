@@ -1,26 +1,63 @@
 package gentior
 
 import (
-    callgraph
+	"flag"
+	"github.com/athorp96/graphs"
+	"math/rand"
+)
 
-func Main(){
+func Main() {
+	// default values
+	defualtPopulation := 50
+	defualtgenerations := 100
 
-    graph := readgraph(filepath)
-    defualtPopulation := 50
-    defualtgenerations := 100
-    populationSize int
-    generations int
+	// declare input variables
+	var filepath string
+	var populationSize int
+	var generations int
 
-    flag.StringVar(&populationSize, "population", defualtPopulation, "Population size")
-    flag.StringVar(&generations, "generations", defualtgenerations, "Number of generations to run")
+	// declare flags
+	flag.StringVar(&filepath, "file", "", "Path to the .dat graph file")
+	flag.IntVar(&populationSize, "population", defualtPopulation, "Population size")
+	flag.IntVar(&generations, "generations", defualtgenerations, "Number of generations to run")
 
-    population := generatepopulation(graph, n)
+	// parse flags
+	flag.Parse()
 
-    for (i := 0; i < generations; i++) {
-        parents := selectParents(graph, population, fitnessEvaluator)
-        offspring := createOffspring(parents, recombination)
-        reconstructPopulation(population, offspring, fitnessEvaluator)
-    }
+	// Create graph and population
+	graph := graphs.NewGraphFromFile(filepath)
+	population := generatepopulation(graph, populationSize)
 
-    showSolution(population)
+	// genetically develop good solutions (hopefully)
+	for i := 0; i < generations; i++ {
+		parents := selectParents(graph, population, fitnessEvaluator)
+		offspring := createOffspring(parents, recombination)
+		reconstructPopulation(population, offspring, fitnessEvaluator)
+	}
+
+	// print most fit solution
+	showSolution(population, fitnessEvaluator)
+}
+
+type path struct {
+	order   []int // the actualy path
+	fitness int
+}
+
+func makeRandomPath(g) {
+	n := g.Order()
+	p := new(path)
+	v = rand.Intn(populationSize)
+	edges = g.GetEdges(v)
+
+}
+
+func generatepopulation(g *graph, populationSize int) [][]int {
+	population := make([][]int, populationSize)
+	for i := 0; i < populationSize; i++ {
+		path := makeRandomPath(g)
+
+		// generate a random starting vertex
+		v = rand.Intn(populationSize)
+	}
 }
