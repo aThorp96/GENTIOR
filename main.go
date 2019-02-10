@@ -39,25 +39,45 @@ func Main() {
 	showSolution(population, fitnessEvaluator)
 }
 
-type path struct {
-	order   []int // the actualy path
+func generatepopulation(g *graph, populationSize int) [][]int {
+	r := rand.New(rand.NewSource(time.Now().Unix()))
+	population := make([][]int, populationSize)
+
+	for i := 0; i < populationSize; i++ {
+		path := makeRandomPath(g)
+	}
+}
+
+type simplePath struct {
+	path    []int // the path
 	fitness int
 }
 
 func makeRandomPath(g) {
+	r := rand.New(rand.NewSource(time.Now().Unix()))
 	n := g.Order()
-	p := new(path)
-	v = rand.Intn(populationSize)
+	p := new(simplePath)
 	edges = g.GetEdges(v)
+	v = rand.Intn(populationSize)
 
-}
+	// initialize random walk path
+	path := r.Perm(n)
 
-func generatepopulation(g *graph, populationSize int) [][]int {
-	population := make([][]int, populationSize)
-	for i := 0; i < populationSize; i++ {
-		path := makeRandomPath(g)
-
-		// generate a random starting vertex
-		v = rand.Intn(populationSize)
+	// randomize until there is a valid cycle
+	for !isCycle(g, path) {
+		path = r.Perm(n)
 	}
+
+	p.path = walk
+
+
+func isCycle(g *graph, walk []int) bool {
+	cycle := true
+	length := len(walk)
+
+	for i := 0; i < length && cycle; i++ {
+		n := (i + 1) % length
+		cycle = g.IsConnected(i, n)
+	}
+	return cycle
 }
