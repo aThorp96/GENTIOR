@@ -28,6 +28,8 @@ type Hamiltonian struct {
 	fitness int
 }
 
+var random *rand.Rand
+
 func main() {
 	// default values
 	defualtPopulation := 50
@@ -41,13 +43,15 @@ func main() {
 	var bias float64
 
 	// declare flags
-	flag.StringVar(&filepath, "file", "quilt.dat", "Path to the .dat graph file")
+	flag.StringVar(&filepath, "file", "quilt_small.dat", "Path to the .dat graph file")
 	flag.IntVar(&populationSize, "population", defualtPopulation, "Population size")
 	flag.IntVar(&generations, "generations", defualtGenerations, "Number of generations to run")
 	flag.Float64Var(&bias, "bias", defaultBias, "Fitness bias for parent selection, a number between zero and one")
 
 	// parse flags
 	flag.Parse()
+
+	random = rand.New(rand.NewSource(time.Now().Unix()))
 
 	Gentior(filepath, populationSize, generations, bias)
 }
@@ -70,10 +74,7 @@ func Gentior(filepath string, populationSize, generations int, bias float64) {
 
 func showPopulation(population []Hamiltonian) {
 	for _, h := range population {
-		for _, n := range h.path {
-			fmt.Printf("%d ", n)
-		}
-		fmt.Println()
+        fmt.Printf("%v\n", h)
 	}
 }
 
@@ -87,8 +88,7 @@ func applyBias(i int, b float64) int {
 }
 
 func randomBias(i int, b float64) int {
-	r := rand.New(rand.NewSource(time.Now().Unix()))
-	addend := r.Float64()
+	addend := random.Float64()
 	biased := float64(i) * (1.0 + addend)
 	return int(biased)
 }
@@ -100,7 +100,6 @@ func createOffspring(parents []Hamiltonian, g *Undirected, combine recombination
 }
 
 func generatepopulation(g *Undirected, populationSize int) []Hamiltonian {
-	//r := rand.New(rand.NewSource(time.Now().Unix()))
 	population := make([]Hamiltonian, populationSize)
 
 	for i := 0; i < populationSize; i++ {
@@ -114,14 +113,13 @@ func generatepopulation(g *Undirected, populationSize int) []Hamiltonian {
 // the permutation is a cycle, a hamiltonian cycle since it includes
 // each vertex exaclty once.
 func makeRandomPath(g *Undirected) *Hamiltonian {
-	r := rand.New(rand.NewSource(time.Now().Unix()))
 	n := g.Order()
 	p := new(Hamiltonian)
 	//v := rand.Intn(g.Order())
 	//edges := g.GetEdges(v)
 
 	// initialize random walk path
-	path := r.Perm(n)
+	path := random.Perm(n)
 
 	fmt.Println("Trying Path")
 	// randomize until there is a valid cycle
@@ -132,7 +130,7 @@ func makeRandomPath(g *Undirected) *Hamiltonian {
 		}
 		fmt.Println()
 
-		path = r.Perm(n)
+		path = random.Perm(n)
 	}
 
 	p.path = path
@@ -157,7 +155,7 @@ func makeZeroPath(g *Undirected) *Hamiltonian {
 
 func randomDFS(vertex int, g *Undirected) []int {
 	visited := make([]bool, g.Order())
-	path, found := dfs(vertex, vertex, visited, 0, g)
+	path, found := dfs(vertex, vertex, visited, 0,[]int{}, g)
 	if !found {
 		fmt.Println("No possible Hamiltonian Cycle")
 		panic(fmt.Sprint(""))
@@ -176,44 +174,53 @@ func randomDFS(vertex int, g *Undirected) []int {
 //
 // @return the path taken by the recursive calls
 // @return whether or not the goal was found
-func dfs(current int, goal int, visited []bool, depth int, g *Undirected) ([]int, bool) {
+func dfs(current int, goal int, visited []bool, depth int, soFar []int, g *Undirected) ([]int, bool) {
 	// base case
 	if current == goal && depth == g.Order() {
 		return []int{}, true
-	} else if current != goal {
-		// don't mark goal so it can be found
+	} else {
 		visited[current] = true
 	}
 
 	// initialize a random object
-	r := rand.New(rand.NewSource(time.Now().Unix()))
 
 	edges := g.GetEdges(current)
 
 	// starting at a random index, iterate over edges, looping over the end
 	firstIteration := true
-	for i, j := r.Intn(len(edges)), -1; firstIteration || i != j; i = (i + 1) % len(edges) {
+	for i, j := random.Intn(len(edges)), -1; firstIteration || i != j; i = (i + 1) % len(edges) {
 		// ensure i can't get back to j
 		if firstIteration {
 			firstIteration = false
 			j = i
 		}
+
+		if len(visited) - 1 == depth {
+    		for _, n := range edges {
+        		if n == goal {
+            		return []int{current}, true
+        		}
+    		}
+		}
+
 		// if the the has not been visited OR the next edge is not the goal (unless it is at the coorect depth
-		if !visited[edges[i]] && (edges[i] != goal || depth == len(edges)) {
+		if !visited[edges[i]] || (depth >= len(visited) && edges[i] == goal)  {
 			// copy visited array
 			visitedCopy := make([]bool, len(visited))
 			copy(visitedCopy, visited)
 			// visit that edge
-			path, found := dfs(edges[i], goal, visitedCopy, depth+1, g)
+			path, found := dfs(edges[i], goal, visitedCopy, depth+1, append(soFar, current),  g)
 			if found {
 				return append(path, current), found
 			}
 		}
-		//fmt.Printf("Edges: %v\n", edges)
+
+
 		//fmt.Printf("i: %d\n\n", i)
 		//fmt.Printf("j: %d\n\n", j)
 	}
-	return nil, false
+
+		return nil, false
 }
 
 // A fitness evaluator
