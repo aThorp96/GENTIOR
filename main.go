@@ -58,19 +58,66 @@ func main() {
 
 func Gentior(filepath string, populationSize, generations int, bias float64) {
 	// Create graph and population
-	graph := NewGraphFromFile(filepath)
+	graph := NewWeightedGraphFromFile(filepath)
 	population := generatepopulation(graph, populationSize)
 
 	// genetically develop good solutions (hopefully)
-	//	for i := 0; i < generations; i++ {
-	//	parents := selectParents(len(population), bias)
-     child := edgeRecombination(population[0], population[1], graph)
-		//reconstructPopulation(population, offspring)
-	//}
-	population = append(population, *child)
+		for i := 0; i < generations; i++ {
+    	parents := selectParents(len(population), bias)
+    	pop := population[parents[0]]
+    	mom := population[parents[1]]
+    	//pop.path = []int {0, 12, 9, 11, 6, 1, 4, 2, 5, 3, 8, 7, 10} // Known issue causing 
+    	//mom.path = []int {0, 12, 9, 11, 6, 7, 4, 1, 2, 3, 5, 8, 10} 
+    	//fmt.Printf("%v\n", pop)
+    	//fmt.Printf("%v\n", mom)
+        child := edgeRecombination(pop, mom, graph)
+		reconstructPopulation(population, child)
+	}
 
 	// print most fit solution
 	showPopulation(population)
+}
+
+func reconstructPopulation(population []Hamiltonian, offspring *Hamiltonian) {
+    binaryInsert(*offspring, population, 0, len(population))
+}
+
+// Add inserts an element into the list, maintaining the size
+func binaryInsert(v Hamiltonian, list []Hamiltonian, start int, end int) {
+    if (end - start < 2) {
+        length := len(list)
+        first := append(list[0:start], v)
+        list = append(first, list[end:length-1] ... )
+        return
+    }
+    mid := (start  + end) / 2
+    if list[mid].fitness ==  v.fitness && rand.Int() % 2 == 0 {
+        binaryInsert(v, list, start, mid - 1)
+    } else if list[mid].fitness >= v.fitness{
+        binaryInsert(v, list, start, mid - 1)
+    } else {
+        binaryInsert(v, list, mid, end)
+    }
+
+}
+
+// Add inserts an element into the list, growing it
+func binaryAdd(v Hamiltonian, list []Hamiltonian, start int, end int) {
+    if (end - start < 2) {
+        length := len(list)
+        first := append(list[0:start], v)
+        list = append(first, list[end:length] ... )
+        return
+    }
+    mid := (start  + end) / 2
+    if list[mid].fitness ==  v.fitness && rand.Int() % 2 == 0 {
+        binaryInsert(v, list, start, mid - 1)
+    } else if list[mid].fitness >= v.fitness{
+        binaryInsert(v, list, start, mid - 1)
+    } else {
+        binaryInsert(v, list, mid, end)
+    }
+
 }
 
 func edgeRecombination(pop Hamiltonian, mom Hamiltonian, g *Undirected) *Hamiltonian {
@@ -78,14 +125,20 @@ func edgeRecombination(pop Hamiltonian, mom Hamiltonian, g *Undirected) *Hamilto
 
     edgeList := getEdgeList(pop, mom)
 
+    child := new(Hamiltonian)
+    for pathFound := false; !pathFound; {
     // start with 0
     start := 0
 
-    child := new(Hamiltonian)
-    for pathFound := false; !pathFound; {
+    // random Start
+    start = rand.Intn(numVertices)
+
         child.path = []int{}
         visited := make([]bool, numVertices)
+            fmt.Println("looping")
         for i, m := 0, start; i < numVertices && m >= 0; i++ {
+        	rand.Seed(rand.Int63())
+            //fmt.Println("\tlooping")
             visited[m] = true
             child.path = append(child.path, m)
 
@@ -98,8 +151,10 @@ func edgeRecombination(pop Hamiltonian, mom Hamiltonian, g *Undirected) *Hamilto
                 m = getUnvisitedEdge(m, visited, g)
             }
         }
+        fmt.Printf("%v\n", child.path)
         if len(child.path) == numVertices && isCycle(g, child.path){
             pathFound = true
+            child.fitness = fitness(g, child.path)
         }
     }
 
@@ -218,7 +273,18 @@ func showPopulation(population []Hamiltonian) {
 
 // TODO 
 func selectParents(populationSize int, bias float64) []int {
-	return make([]int, 2)
+    // Select at Random
+    // TODO implement bias
+    mom := rand.Intn(populationSize)
+    pop := rand.Intn(populationSize)
+
+    // ensure parents are different
+    for mom == pop {
+        pop = rand.Intn(populationSize)
+    }
+
+    parentList := []int{pop, mom}
+    return parentList
 }
 
 //TODO
@@ -337,9 +403,10 @@ func dfs(current int, goal int, visited []bool, depth int, soFar []int, g *Undir
 // Returns the sum weight of the walk
 func fitness(g *Undirected, walk []int) int {
 	length := 0
-	for i := 0; i < length; i++ {
-		n := (i + 1) % length
-		length += g.Weight(i, n)
+	for i := 0; i < len(walk); i++ {
+		n := (i + 1) % len(walk)
+		length += g.Weight(walk[i], walk[n])
+		fmt.Printf("Weight %d - %d: %d\n", walk[i], walk[n], g.Weight(walk[i], walk[n]))
 	}
 	return length
 }
