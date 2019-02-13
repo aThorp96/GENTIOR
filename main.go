@@ -28,7 +28,6 @@ type Hamiltonian struct {
 	fitness int
 }
 
-var random *rand.Rand
 
 func main() {
 	// default values
@@ -51,9 +50,10 @@ func main() {
 	// parse flags
 	flag.Parse()
 
-	random = rand.New(rand.NewSource(time.Now().Unix()))
+	rand.Seed(time.Now().Unix())
 
 	Gentior(filepath, populationSize, generations, bias)
+
 }
 
 func Gentior(filepath string, populationSize, generations int, bias float64) {
@@ -62,14 +62,133 @@ func Gentior(filepath string, populationSize, generations int, bias float64) {
 	population := generatepopulation(graph, populationSize)
 
 	// genetically develop good solutions (hopefully)
-	/*	for i := 0; i < generations; i++ {
-		parents := selectParents(len(population), bias)
-		offspring := createOffspring(population[parents[0]], population[parents[1]], graph, recombination)
-		reconstructPopulation(population, offspring)
-	}*/
+	//	for i := 0; i < generations; i++ {
+	//	parents := selectParents(len(population), bias)
+     edgeRecombination(population[0], population[1], graph)
+		//reconstructPopulation(population, offspring)
+	//}
 
 	// print most fit solution
 	showPopulation(population)
+}
+
+func edgeRecombination(pop Hamiltonian, mom Hamiltonian, g *Undirected) *Hamiltonian {
+    numVertices := g.Order()
+    visited := make([]bool, numVertices)
+
+    edgeList := getEdgeList(pop, mom)
+    fmt.Printf("%v\n", edgeList)
+
+    // start with 0
+    start := 0
+
+    child := new(Hamiltonian)
+    child.path = []int{start}
+
+    for i, m := 0, start; i < numVertices; i++ {
+        visited[m] = true
+        // get next index
+        nextEdge := smallestAdjecency(m, edgeList, visited)
+
+        if nextEdge >= 0 {
+            m = nextEdge
+        } else {
+            fmt.Printf("nextEdge: %d, who's neighbors are %v, currently: %v\n", m, edgeList[m], child.path)
+            m = getUnvisitedEdge(m, visited, g)
+        }
+        child.path = append(child.path, m)
+    }
+
+    fmt.Printf("%v\n", child)
+    return child
+}
+
+func getUnvisitedEdge(current int, visited []bool, g * Undirected) int {
+    adjecents := g.GetEdges(current)
+    unvisited := []int{}
+
+    for _, n := range adjecents {
+        if !visited[n] {
+            unvisited = append(unvisited, n)
+        }
+    }
+    fmt.Printf("unvisited: %v\n", unvisited)
+    fmt.Printf("adjecents: %v\n", adjecents)
+    return unvisited[rand.Intn(len(unvisited))]
+
+}
+
+func getEdgeList(pop Hamiltonian, mom Hamiltonian) [][]int {
+    numEdges := len(pop.path)
+    edgeList := make([][]int, numEdges)
+    
+    // build edge list
+    for i, n := range pop.path {
+        last := i - 1
+        if last < 0 {
+            last = numEdges - 1
+        }
+        next := (i + 1) % len(edgeList)
+
+        edgeList[n] = insert(pop.path[last], edgeList[n])
+        edgeList[n] = insert(pop.path[next], edgeList[n])
+
+    }
+    for i, n := range mom.path {
+        last := i - 1
+        if last < 0 {
+            last = numEdges - 1
+        }
+        next := (i + 1) % len(edgeList)
+
+        edgeList[n] = insert(mom.path[last], edgeList[n])
+        edgeList[n] = insert(mom.path[next], edgeList[n])
+    }
+    return edgeList
+}
+
+func insert(n int, list []int) []int{
+    if len(list) == 0 {
+        list = []int{n}
+    } else {
+        for _, m := range list {
+            if m == n {
+                return list
+            }
+        }
+        list = append(list, n)
+    }
+    return list
+}
+
+// smallestAdjecency finds the lowest degree unvisited edge adjecent to the current edge
+// if no adjecent edges are unvisited, the function returns -1
+func smallestAdjecency(current int, edges [][]int, visited []bool) int {
+    // building list of unvisited
+    possibles := []int{}
+    for _, n := range edges[current] {
+        if !visited[n] {
+            possibles = append(possibles, n)
+        }
+    }
+
+    smallIndex := -1
+    smallVal := -1
+
+    // search for smallest unvisisted node
+    for i, n := range possibles {
+        // if we are starting the list or we've found a smaller vertex, replace it
+        if smallIndex < 0 || len(edges[n]) < len(edges[smallVal]) {
+            smallIndex = i
+            smallVal = n
+        // Or if we have found the same degree vertex, randomly replace it 
+        } else if len(edges[n]) == len(edges[smallVal]) && (rand.Int() % 2 == 0) {
+            smallIndex = i
+            smallVal = n
+        }
+    }
+
+    return smallVal
 }
 
 func showPopulation(population []Hamiltonian) {
@@ -78,25 +197,25 @@ func showPopulation(population []Hamiltonian) {
 	}
 }
 
+// TODO 
 func selectParents(populationSize int, bias float64) []int {
-	//int
 	return make([]int, 2)
 }
 
-func applyBias(i int, b float64) int {
-	return randomBias(i, b)
+//TODO
+func applyBias(i int, max int, b float64) int {
+    //probabilities := make(
+	n := randomBias(i, b)
+	if n > max {
+    	return max
+	} else {
+    	return n
+	}
 }
 
+//TODO?
 func randomBias(i int, b float64) int {
-	addend := random.Float64()
-	biased := float64(i) * (1.0 + addend)
-	return int(biased)
-}
-
-func createOffspring(parents []Hamiltonian, g *Undirected, combine recombination) *Hamiltonian {
-	pop := parents[0]
-	mom := parents[1]
-	return combine(&pop, &mom, g)
+    return -1
 }
 
 func generatepopulation(g *Undirected, populationSize int) []Hamiltonian {
@@ -109,36 +228,9 @@ func generatepopulation(g *Undirected, populationSize int) []Hamiltonian {
 	return population
 }
 
-// makemakeRandomPath creates random permutations from [0,n) until
-// the permutation is a cycle, a hamiltonian cycle since it includes
-// each vertex exaclty once.
-func makeRandomPath(g *Undirected) *Hamiltonian {
-	n := g.Order()
-	p := new(Hamiltonian)
-	//v := rand.Intn(g.Order())
-	//edges := g.GetEdges(v)
-
-	// initialize random walk path
-	path := random.Perm(n)
-
-	fmt.Println("Trying Path")
-	// randomize until there is a valid cycle
-	for !isCycle(g, path) {
-
-		for _, n := range path {
-			fmt.Printf("%d ", n)
-		}
-		fmt.Println()
-
-		path = random.Perm(n)
-	}
-
-	p.path = path
-	p.fitness = fitness(g, path)
-
-	return p
-}
-
+// makeZeroPath makes a path that starts at zero.
+// It finds goal using a depth first search.
+// and returns a path object
 func makeZeroPath(g *Undirected) *Hamiltonian {
 	p := new(Hamiltonian)
 	//v := rand.Intn(g.Order())
@@ -153,6 +245,8 @@ func makeZeroPath(g *Undirected) *Hamiltonian {
 	return p
 }
 
+// randomDFS uses dfs to randomly search a graph for a goal.
+// it is the master function and should 
 func randomDFS(vertex int, g *Undirected) []int {
 	visited := make([]bool, g.Order())
 	path, found := dfs(vertex, vertex, visited, 0,[]int{}, g)
@@ -166,6 +260,9 @@ func randomDFS(vertex int, g *Undirected) []int {
 
 }
 
+// dfsa is the helper function to randomDFS and should not
+// be called directly.
+//
 // dfs takes in a current vertex, the goal vertex,
 // an array of visited vertices, the depth of the search,
 // and a graph.
@@ -182,19 +279,18 @@ func dfs(current int, goal int, visited []bool, depth int, soFar []int, g *Undir
 		visited[current] = true
 	}
 
-	// initialize a random object
-
 	edges := g.GetEdges(current)
 
 	// starting at a random index, iterate over edges, looping over the end
 	firstIteration := true
-	for i, j := random.Intn(len(edges)), -1; firstIteration || i != j; i = (i + 1) % len(edges) {
+	for i, j := rand.Intn(len(edges)), -1; firstIteration || i != j; i = (i + 1) % len(edges) {
 		// ensure i can't get back to j
 		if firstIteration {
 			firstIteration = false
 			j = i
 		}
 
+        // if at correct depth and adjecent to the goal, return success
 		if len(visited) - 1 == depth {
     		for _, n := range edges {
         		if n == goal {
@@ -211,16 +307,11 @@ func dfs(current int, goal int, visited []bool, depth int, soFar []int, g *Undir
 			// visit that edge
 			path, found := dfs(edges[i], goal, visitedCopy, depth+1, append(soFar, current),  g)
 			if found {
-				return append(path, current), found
+				return append([]int{current}, path...), found
 			}
 		}
-
-
-		//fmt.Printf("i: %d\n\n", i)
-		//fmt.Printf("j: %d\n\n", j)
 	}
-
-		return nil, false
+	return nil, false
 }
 
 // A fitness evaluator
