@@ -85,9 +85,10 @@ func reconstructPopulation(population []Hamiltonian, offspring *Hamiltonian) {
 // Add inserts an element into the list, maintaining the size
 func binaryInsert(v Hamiltonian, list []Hamiltonian, start int, end int) {
     if (end - start < 2) {
-        length := len(list)
-        first := append(list[0:start], v)
-        list = append(first, list[end:length-1] ... )
+        if start == end - 1 {
+            list[start] = v
+        }
+        list[end] = v
         return
     }
     mid := (start  + end) / 2
