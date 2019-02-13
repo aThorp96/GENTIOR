@@ -64,9 +64,10 @@ func Gentior(filepath string, populationSize, generations int, bias float64) {
 	// genetically develop good solutions (hopefully)
 	//	for i := 0; i < generations; i++ {
 	//	parents := selectParents(len(population), bias)
-     edgeRecombination(population[0], population[1], graph)
+     child := edgeRecombination(population[0], population[1], graph)
 		//reconstructPopulation(population, offspring)
 	//}
+	population = append(population, *child)
 
 	// print most fit solution
 	showPopulation(population)
@@ -74,35 +75,40 @@ func Gentior(filepath string, populationSize, generations int, bias float64) {
 
 func edgeRecombination(pop Hamiltonian, mom Hamiltonian, g *Undirected) *Hamiltonian {
     numVertices := g.Order()
-    visited := make([]bool, numVertices)
 
     edgeList := getEdgeList(pop, mom)
-    fmt.Printf("%v\n", edgeList)
 
     // start with 0
     start := 0
 
     child := new(Hamiltonian)
-    child.path = []int{start}
+    for pathFound := false; !pathFound; {
+        child.path = []int{}
+        visited := make([]bool, numVertices)
+        for i, m := 0, start; i < numVertices && m >= 0; i++ {
+            visited[m] = true
+            child.path = append(child.path, m)
 
-    for i, m := 0, start; i < numVertices; i++ {
-        visited[m] = true
-        // get next index
-        nextEdge := smallestAdjecency(m, edgeList, visited)
+            // get next index
+            nextEdge := smallestAdjecency(m, edgeList, visited)
 
-        if nextEdge >= 0 {
-            m = nextEdge
-        } else {
-            fmt.Printf("nextEdge: %d, who's neighbors are %v, currently: %v\n", m, edgeList[m], child.path)
-            m = getUnvisitedEdge(m, visited, g)
+            if nextEdge >= 0 {
+                m = nextEdge
+            } else {
+                m = getUnvisitedEdge(m, visited, g)
+            }
         }
-        child.path = append(child.path, m)
+        if len(child.path) == numVertices && isCycle(g, child.path){
+            pathFound = true
+        }
     }
 
-    fmt.Printf("%v\n", child)
     return child
 }
 
+// getUnvisitedEdgeaccepts an edge, a list of visited edges, and a graph.
+// it returns a random, unvisited, adjecent vertex. If no such edge exists
+// the method returns -1
 func getUnvisitedEdge(current int, visited []bool, g * Undirected) int {
     adjecents := g.GetEdges(current)
     unvisited := []int{}
@@ -112,12 +118,22 @@ func getUnvisitedEdge(current int, visited []bool, g * Undirected) int {
             unvisited = append(unvisited, n)
         }
     }
-    fmt.Printf("unvisited: %v\n", unvisited)
-    fmt.Printf("adjecents: %v\n", adjecents)
-    return unvisited[rand.Intn(len(unvisited))]
-
+    if len(unvisited) > 0 {
+        return unvisited[rand.Intn(len(unvisited))]
+    } else {
+        return -1
+    }
 }
 
+// getEdgeList takes in two hamiltonian cycles. It builds a list of
+// neighbors based on what vertices are neighbors in each cycle.
+// if pop = (0 1 2 3 4 5) and mom = (1 2 3 5 0 4), the list will return
+//      0 : (1 4 5)
+//      1 : (0 2 4)
+//      2 : (1 3)
+//      3 : (2 4 5)
+//      4 : (0 1 3 5)
+//      5 : (0 3 4)
 func getEdgeList(pop Hamiltonian, mom Hamiltonian) [][]int {
     numEdges := len(pop.path)
     edgeList := make([][]int, numEdges)
@@ -147,6 +163,9 @@ func getEdgeList(pop Hamiltonian, mom Hamiltonian) [][]int {
     return edgeList
 }
 
+// insert will append an element into a list if that element
+// does not currently exist in the list. Used to ensure there are no
+// repeated numbers in adjecency lists (introducing edge bias)
 func insert(n int, list []int) []int{
     if len(list) == 0 {
         list = []int{n}
@@ -333,8 +352,9 @@ func isCycle(g *Undirected, walk []int) bool {
 	length := len(walk)
 
 	for i := 0; i < length && cycle; i++ {
-		n := (i + 1) % length
-		cycle = g.IsConnected(i, n)
+		n := walk[(i + 1) % length]
+		m := walk[i]
+		cycle = g.IsConnected(m, n)
 	}
 	return cycle
 }
