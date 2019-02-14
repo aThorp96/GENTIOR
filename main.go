@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"time"
+	"sort"
 
 	. "github.com/athorp96/graphs"
 )
@@ -62,7 +63,7 @@ func Gentior(filepath string, populationSize, generations int, bias float64) {
 	population := generatepopulation(graph, populationSize)
 
 	// genetically develop good solutions (hopefully)
-		for i := 0; i < generations; i++ {
+	for i := 0; i < generations; i++ {
     	parents := selectParents(len(population), bias)
     	pop := population[parents[0]]
     	mom := population[parents[1]]
@@ -71,72 +72,105 @@ func Gentior(filepath string, populationSize, generations int, bias float64) {
     	//fmt.Printf("%v\n", pop)
     	//fmt.Printf("%v\n", mom)
         child := edgeRecombination(pop, mom, graph)
-		reconstructPopulation(population, child)
+		population = reconstructPopulation(population, child)
 	}
 
 	// print most fit solution
 	showPopulation(population)
 }
 
-func reconstructPopulation(population []Hamiltonian, offspring *Hamiltonian) {
-    binaryInsert(*offspring, population, 0, len(population))
+func reconstructPopulation(population []Hamiltonian, offspring *Hamiltonian) []Hamiltonian{
+    return binaryInsert(*offspring, population)
 }
 
-// Add inserts an element into the list, maintaining the size
-func binaryInsert(v Hamiltonian, list []Hamiltonian, start int, end int) {
-    if (end - start < 2) {
-        if start == end - 1 {
-            list[start] = v
+// Insert inserts an element into the list, maintaining the size
+func binaryInsert(el Hamiltonian, data []Hamiltonian) []Hamiltonian{
+    index := sort.Search(len(data), func(i int) bool { return data[i].fitness > el.fitness})
+    data = append(data, Hamiltonian{})
+    copy(data[index+1:], data[index:])
+    data[index] = el
+    return data[:len(data) - 1]
+}
+
+// Add inserts an element into the list, increasing the size
+func binaryAdd(el Hamiltonian, data []Hamiltonian) []Hamiltonian{
+    index := sort.Search(len(data), func(i int) bool { return data[i].fitness > el.fitness})
+    data = append(data, Hamiltonian{})
+    copy(data[index+1:], data[index:])
+    data[index] = el
+    return data
+}
+
+func linearInsert(v Hamiltonian, list []Hamiltonian) [] Hamiltonian{
+    length := len(list) - 1
+    for i, n := range list {
+        if i == length {
+            if rand.Int() % 2 == 0 {
+                list[i] = v
+            }
+            break
+        } else if i == 0 && n.fitness >= v.fitness {
+            list = append([]Hamiltonian{v}, list[:length] ...)
+            break
+        } else {
+            if n.fitness > v.fitness {
+                first := append(list[0:i], v)
+                list = append(first, list[i:length - 1] ... )
+            }
+            break
         }
-        list[end] = v
-        return
     }
-    mid := (start  + end) / 2
-    if list[mid].fitness ==  v.fitness && rand.Int() % 2 == 0 {
-        binaryInsert(v, list, start, mid - 1)
-    } else if list[mid].fitness >= v.fitness{
-        binaryInsert(v, list, start, mid - 1)
-    } else {
-        binaryInsert(v, list, mid, end)
-    }
-
+    return list
 }
 
-// Add inserts an element into the list, growing it
-func binaryAdd(v Hamiltonian, list []Hamiltonian, start int, end int) {
-    if (end - start < 2) {
-        length := len(list)
-        first := append(list[0:start], v)
-        list = append(first, list[end:length] ... )
-        return
-    }
-    mid := (start  + end) / 2
-    if list[mid].fitness ==  v.fitness && rand.Int() % 2 == 0 {
-        binaryInsert(v, list, start, mid - 1)
-    } else if list[mid].fitness >= v.fitness{
-        binaryInsert(v, list, start, mid - 1)
-    } else {
-        binaryInsert(v, list, mid, end)
-    }
+func linearAdd(v Hamiltonian, list []Hamiltonian) [] Hamiltonian{
+    length := len(list) - 1
 
+    for i, n := range list {
+        if i == length {
+            if rand.Int() % 2 == 0 {
+                list = append(list, v)
+                break
+            }
+        } else if i == 0 && n.fitness >= v.fitness {
+            list = append([]Hamiltonian{v}, list ...)
+            break
+        } else {
+            if n.fitness > v.fitness {
+                first := append(list[0:i], v)
+                list = append(first, list[i:] ... )
+            }
+            break
+        }
+    }
+    if len(list) == 0 {
+        list = []Hamiltonian{v}
+    }
+    //fmt.Printf("%v\n", list)
+    return list
 }
 
 func edgeRecombination(pop Hamiltonian, mom Hamiltonian, g *Undirected) *Hamiltonian {
     numVertices := g.Order()
 
     edgeList := getEdgeList(pop, mom)
-
     child := new(Hamiltonian)
-    for pathFound := false; !pathFound; {
-    // start with 0
-    start := 0
+    attemptCount := 0
+    maxAttempts := 6000
 
-    // random Start
-    start = rand.Intn(numVertices)
+    for pathFound := false; !pathFound; attemptCount++ {
+        // if you've tried n times with no successful child, adopt a new child        // start with 0
+        if attemptCount == maxAttempts {
+            //child = makeZeroPath(g)
+            //return child
+        }
+        start := 0
+
+        // random Start
+        start = rand.Intn(numVertices)
 
         child.path = []int{}
         visited := make([]bool, numVertices)
-            fmt.Println("looping")
         for i, m := 0, start; i < numVertices && m >= 0; i++ {
         	rand.Seed(rand.Int63())
             //fmt.Println("\tlooping")
@@ -152,7 +186,6 @@ func edgeRecombination(pop Hamiltonian, mom Hamiltonian, g *Undirected) *Hamilto
                 m = getUnvisitedEdge(m, visited, g)
             }
         }
-        fmt.Printf("%v\n", child.path)
         if len(child.path) == numVertices && isCycle(g, child.path){
             pathFound = true
             child.fitness = fitness(g, child.path)
@@ -267,12 +300,12 @@ func smallestAdjecency(current int, edges [][]int, visited []bool) int {
 }
 
 func showPopulation(population []Hamiltonian) {
+    fmt.Println("Population: ")
 	for _, h := range population {
         fmt.Printf("%v\n", h)
 	}
 }
 
-// TODO 
 func selectParents(populationSize int, bias float64) []int {
     // Select at Random
     // TODO implement bias
@@ -288,7 +321,7 @@ func selectParents(populationSize int, bias float64) []int {
     return parentList
 }
 
-//TODO
+//TODO?
 func applyBias(i int, max int, b float64) int {
     //probabilities := make(
 	n := randomBias(i, b)
@@ -305,11 +338,11 @@ func randomBias(i int, b float64) int {
 }
 
 func generatepopulation(g *Undirected, populationSize int) []Hamiltonian {
-	population := make([]Hamiltonian, populationSize)
+	population := make([]Hamiltonian, 0, populationSize)
 
 	for i := 0; i < populationSize; i++ {
 		path := makeZeroPath(g)
-		population[i] = *path
+		population = binaryAdd(*path, population) 
 	}
 	return population
 }
@@ -340,7 +373,6 @@ func randomDFS(vertex int, g *Undirected) []int {
 		fmt.Println("No possible Hamiltonian Cycle")
 		panic(fmt.Sprint(""))
 	} else {
-		fmt.Printf("Found path! %v\n", path)
 		return path
 	}
 
@@ -407,7 +439,6 @@ func fitness(g *Undirected, walk []int) int {
 	for i := 0; i < len(walk); i++ {
 		n := (i + 1) % len(walk)
 		length += g.Weight(walk[i], walk[n])
-		fmt.Printf("Weight %d - %d: %d\n", walk[i], walk[n], g.Weight(walk[i], walk[n]))
 	}
 	return length
 }
