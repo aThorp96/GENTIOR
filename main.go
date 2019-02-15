@@ -51,16 +51,21 @@ func main() {
 	flag.Float64Var(&bias, "b", defaultBias, "Fitness bias for parent selection, a number between zero and one **Currently does nothing**")
 	flag.BoolVar(&connected, "c", true, "Whether or not the graph is connected: adds a linear speedup since children don't need to be checked that they are a cycle.")
 	flag.BoolVar(&quiet, "v", true, "Verbose mode: Outputs percent completion")
-
+    play := flag.Bool("cascade", false, "Sweep along many different population and genreatio sizes")
 	// parse flags
 	flag.Parse()
 
 	rand.Seed(time.Now().Unix())
 
-    if connected {
-    	ConnectedGentior(filepath, populationSize, generations, bias, quiet)
+    if ! *play {
+        if connected {
+        	ConnectedGentior(filepath, populationSize, generations, bias, quiet)
+        } else {
+        	Gentior(filepath, populationSize, generations, bias, quiet)
+        }
     } else {
-    	Gentior(filepath, populationSize, generations, bias, quiet)
+        // population size
+        ConcurrentGentior(filepath, populationSize, generations, bias, quiet)
     }
 
 }
@@ -82,9 +87,11 @@ func Gentior(filepath string, populationSize, generations int, bias float64, qui
 		}
 	}
 
-	// print most fit solution
-	//showPopulation(population)
-	showSolution(population)
+    fmt.Println()
+    fmt.Println("-------------------- Results -------------------- ")
+    fmt.Printf("Shortest path:\t%d\n\n", population[0].fitness)
+    fmt.Printf("Sholution: %v\n", population[0].path)
+    fmt.Println("------------------------------------------------- ")
 }
 
 func printProgress(i, n int) {
@@ -111,17 +118,54 @@ func ConnectedGentior(filepath string, populationSize, generations int, bias flo
 		}
 	}
 
-	// print most fit solution
-	//showPopulation(population)
-	showSolution(population)
+    fmt.Println()
+    fmt.Println("---------------------- Results ---------------------- ")
+    fmt.Printf("Population: \t%d\t\tGenerations: \t%d\n", populationSize, generations )
+    fmt.Printf("Shortest path:\t%d\n\n", population[0].fitness)
+    fmt.Printf("Sholution: %v\n", population[0].path)
+    fmt.Println("----------------------------------------------------- ")
 }
 
-func showSolution(list []Hamiltonian) {
+func ConcurrentGentior(filepath string, populationSize, generations int, bias float64, quiet bool) {
+	// Create graph and population
+	graph := NewWeightedGraphFromFile(filepath)
+	results := make(chan string)
+	numRoutines := 0
+    for i := 100; i < 1000; i += 100 {
+        // generations
+        for j := i; j < 1000000; j += 1000 {
+            go ConcurrentGentiorBeef(graph, i, j, bias, results)
+            numRoutines++
+        }
+    }
     fmt.Println()
-    fmt.Println("-------------------- Results -------------------- ")
-    fmt.Printf("Shortest path:\t%d\n\n", list[0].fitness)
-    fmt.Printf("Sholution: %v\n", list[0].path)
-    fmt.Println("------------------------------------------------- ")
+    fmt.Println("---------------------- Results ---------------------- ")
+    for i := 0; i < numRoutines; i++ {
+        fmt.Println(<- results)
+    }
+    fmt.Println("----------------------------------------------------- ")
+
+}
+
+func ConcurrentGentiorBeef(graph *Undirected, populationSize, generations int, bias float64, report chan string) {
+	population := generatepopulation(graph, populationSize)
+
+	// genetically develop good solutions (hopefully)
+	for i := 0; i < generations; i++ {
+    	parents := selectParents(len(population), bias)
+    	pop := population[parents[0]]
+    	mom := population[parents[1]]
+        child := connectedEdgeRecombination(pop, mom, graph)
+		population = reconstructPopulation(population, child)
+	}
+
+
+    results := fmt.Sprintf("Population: \t%d\t\tGenerations: \t%d\n", populationSize, generations )
+    results += fmt.Sprintf("Shortest path:\t%d\n\n", population[0].fitness)
+    results += fmt.Sprintf("Sholution: %v\n", population[0].path)
+
+    report <- results
+
 }
 
 func reconstructPopulation(population []Hamiltonian, offspring *Hamiltonian) []Hamiltonian{
