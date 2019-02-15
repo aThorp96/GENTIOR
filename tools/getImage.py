@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-filename = "./sgb128_xy.txt"
+filename = "../data/randomDataset/points.txt"
 edgeFile = open(filename)
 
 xVals= []
@@ -10,7 +10,7 @@ minX = 9999
 minY = 9999
 maxY = -9999
 
-solution = [20, 51, 64, 14, 117, 92, 116, 68, 70, 47, 69, 79, 53, 91, 108, 88, 103, 60, 106, 119, 63, 95, 21, 71, 46, 58, 50, 65, 66, 40, 26, 0, 93, 3, 74, 105, 5, 82, 73, 22, 101, 72, 6, 12, 42, 27, 15, 96, 104, 113, 124, 16, 112, 120, 52, 35, 18, 55, 43, 87, 109, 44, 111, 29, 37, 123, 33, 48, 49, 78, 83, 62, 39, 125, 1, 89, 97, 59, 80, 126, 9, 77, 28, 25, 54, 115, 90, 2, 8, 30, 57, 81, 102, 31, 84, 107, 86, 41, 10, 11, 7, 45, 19, 76, 34, 67, 36, 56, 99, 23, 61, 122, 75, 32, 128, 121, 127, 85, 100, 13, 114, 17, 110, 24, 38, 98, 4, 118, 94]
+solution = [97, 65, 84, 60, 27, 57, 68, 44, 29, 79, 92, 16, 58, 14, 95, 38, 59, 98, 48, 61, 72, 39, 80, 51, 87, 21, 70, 89, 49, 17, 93, 8, 99, 90, 3, 31, 5, 56, 32, 45, 22, 33, 13, 50, 24, 0, 75, 91, 30, 26, 86, 42, 36, 85, 6, 63, 9, 18, 67, 76, 4, 7, 35, 10, 47, 94, 66, 1, 96, 83, 19, 2, 20, 52, 53, 25, 28, 82, 81, 55, 43, 69, 74, 78, 37, 23, 54, 41, 15, 77, 73, 46, 64, 88, 12, 11, 40, 34, 71, 62]
 
 for line in edgeFile:
     if not line.startswith("#"):
@@ -33,14 +33,14 @@ for line in edgeFile:
 
 pathX = []
 pathY = []
-print(len(xVals))
 for i in solution:
-    print(i)
     pathX.append(xVals[i])
     pathY.append(yVals[i])
 
 
+#plt.plot(xVals, yVals, markers)
+for x, y, i in zip(xVals, yVals, range(0, 128)):
+    plt.text(x, y, i, color="blue", fontsize=10)
 plt.plot(pathX, pathY, color = "red")
-plt.plot(xVals, yVals, 'bo')
 plt.axis([minX, maxX, minY, maxY])
 plt.show()
