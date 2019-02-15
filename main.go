@@ -41,23 +41,31 @@ func main() {
 	var populationSize int
 	var generations int
 	var bias float64
+	var connected bool
+	var quiet bool
 
 	// declare flags
-	flag.StringVar(&filepath, "file", "quilt_small.dat", "Path to the .dat graph file")
-	flag.IntVar(&populationSize, "population", defualtPopulation, "Population size")
-	flag.IntVar(&generations, "generations", defualtGenerations, "Number of generations to run")
-	flag.Float64Var(&bias, "bias", defaultBias, "Fitness bias for parent selection, a number between zero and one")
+	flag.StringVar(&filepath, "f", "data/sgb128/sgb128.dat", "Path to the .dat graph file")
+	flag.IntVar(&populationSize, "p", defualtPopulation, "Population size")
+	flag.IntVar(&generations, "g", defualtGenerations, "Number of generations to run")
+	flag.Float64Var(&bias, "b", defaultBias, "Fitness bias for parent selection, a number between zero and one")
+	flag.BoolVar(&connected, "c", true, "Whether or not the graph is connected")
+	flag.BoolVar(&quiet, "q", false, "Whether or not the graph is connected")
 
 	// parse flags
 	flag.Parse()
 
 	rand.Seed(time.Now().Unix())
 
-	Gentior(filepath, populationSize, generations, bias)
+    if connected {
+    	ConnectedGentior(filepath, populationSize, generations, bias, quiet)
+    } else {
+    	Gentior(filepath, populationSize, generations, bias, quiet)
+    }
 
 }
 
-func Gentior(filepath string, populationSize, generations int, bias float64) {
+func Gentior(filepath string, populationSize, generations int, bias float64, quiet bool) {
 	// Create graph and population
 	graph := NewWeightedGraphFromFile(filepath)
 	population := generatepopulation(graph, populationSize)
@@ -67,16 +75,53 @@ func Gentior(filepath string, populationSize, generations int, bias float64) {
     	parents := selectParents(len(population), bias)
     	pop := population[parents[0]]
     	mom := population[parents[1]]
-    	//pop.path = []int {0, 12, 9, 11, 6, 1, 4, 2, 5, 3, 8, 7, 10} // Known issue causing 
-    	//mom.path = []int {0, 12, 9, 11, 6, 7, 4, 1, 2, 3, 5, 8, 10} 
-    	//fmt.Printf("%v\n", pop)
-    	//fmt.Printf("%v\n", mom)
         child := edgeRecombination(pop, mom, graph)
 		population = reconstructPopulation(population, child)
+		if !quiet {
+            printProgress(i, generations)
+		}
 	}
 
 	// print most fit solution
-	showPopulation(population)
+	//showPopulation(population)
+	showSolution(population)
+}
+
+func printProgress(i, n int) {
+    percent := float64(i) / float64(n)
+    percent *= 100
+    fmt.Println("\033[H\033[2J")
+    fmt.Printf("%d%% \n", int(percent))
+}
+
+func ConnectedGentior(filepath string, populationSize, generations int, bias float64, quiet bool) {
+	// Create graph and population
+	graph := NewWeightedGraphFromFile(filepath)
+	population := generatepopulation(graph, populationSize)
+
+	// genetically develop good solutions (hopefully)
+	for i := 0; i < generations; i++ {
+    	parents := selectParents(len(population), bias)
+    	pop := population[parents[0]]
+    	mom := population[parents[1]]
+        child := connectedEdgeRecombination(pop, mom, graph)
+		population = reconstructPopulation(population, child)
+		if !quiet {
+            printProgress(i, generations)
+		}
+	}
+
+	// print most fit solution
+	//showPopulation(population)
+	showSolution(population)
+}
+
+func showSolution(list []Hamiltonian) {
+    fmt.Println()
+    fmt.Println("-------------------- Results -------------------- ")
+    fmt.Printf("Shortest path:\t%d\n\n", list[0].fitness)
+    fmt.Printf("Sholution: %v\n", list[0].path)
+    fmt.Println("------------------------------------------------- ")
 }
 
 func reconstructPopulation(population []Hamiltonian, offspring *Hamiltonian) []Hamiltonian{
@@ -101,55 +146,6 @@ func binaryAdd(el Hamiltonian, data []Hamiltonian) []Hamiltonian{
     return data
 }
 
-func linearInsert(v Hamiltonian, list []Hamiltonian) [] Hamiltonian{
-    length := len(list) - 1
-    for i, n := range list {
-        if i == length {
-            if rand.Int() % 2 == 0 {
-                list[i] = v
-            }
-            break
-        } else if i == 0 && n.fitness >= v.fitness {
-            list = append([]Hamiltonian{v}, list[:length] ...)
-            break
-        } else {
-            if n.fitness > v.fitness {
-                first := append(list[0:i], v)
-                list = append(first, list[i:length - 1] ... )
-            }
-            break
-        }
-    }
-    return list
-}
-
-func linearAdd(v Hamiltonian, list []Hamiltonian) [] Hamiltonian{
-    length := len(list) - 1
-
-    for i, n := range list {
-        if i == length {
-            if rand.Int() % 2 == 0 {
-                list = append(list, v)
-                break
-            }
-        } else if i == 0 && n.fitness >= v.fitness {
-            list = append([]Hamiltonian{v}, list ...)
-            break
-        } else {
-            if n.fitness > v.fitness {
-                first := append(list[0:i], v)
-                list = append(first, list[i:] ... )
-            }
-            break
-        }
-    }
-    if len(list) == 0 {
-        list = []Hamiltonian{v}
-    }
-    //fmt.Printf("%v\n", list)
-    return list
-}
-
 func edgeRecombination(pop Hamiltonian, mom Hamiltonian, g *Undirected) *Hamiltonian {
     numVertices := g.Order()
 
@@ -159,11 +155,14 @@ func edgeRecombination(pop Hamiltonian, mom Hamiltonian, g *Undirected) *Hamilto
     maxAttempts := 6000
 
     for pathFound := false; !pathFound; attemptCount++ {
-        // if you've tried n times with no successful child, adopt a new child        // start with 0
+
+        // if you've tried n times with no successful child, adopt a new child
         if attemptCount == maxAttempts {
-            //child = makeZeroPath(g)
-            //return child
+            child = makeZeroPath(g)
+            return child
         }
+
+
         start := 0
 
         // random Start
@@ -173,7 +172,6 @@ func edgeRecombination(pop Hamiltonian, mom Hamiltonian, g *Undirected) *Hamilto
         visited := make([]bool, numVertices)
         for i, m := 0, start; i < numVertices && m >= 0; i++ {
         	rand.Seed(rand.Int63())
-            //fmt.Println("\tlooping")
             visited[m] = true
             child.path = append(child.path, m)
 
@@ -187,6 +185,53 @@ func edgeRecombination(pop Hamiltonian, mom Hamiltonian, g *Undirected) *Hamilto
             }
         }
         if len(child.path) == numVertices && isCycle(g, child.path){
+            pathFound = true
+            child.fitness = fitness(g, child.path)
+        }
+    }
+
+    return child
+}
+
+func connectedEdgeRecombination(pop Hamiltonian, mom Hamiltonian, g *Undirected) *Hamiltonian {
+    numVertices := g.Order()
+
+    edgeList := getEdgeList(pop, mom)
+    child := new(Hamiltonian)
+    attemptCount := 0
+    maxAttempts := 6000
+
+    for pathFound := false; !pathFound; attemptCount++ {
+
+        // if you've tried n times with no successful child, adopt a new child
+        if attemptCount == maxAttempts {
+            child = makeZeroPath(g)
+            return child
+        }
+
+
+        start := 0
+
+        // random Start
+        start = rand.Intn(numVertices)
+
+        child.path = []int{}
+        visited := make([]bool, numVertices)
+        for i, m := 0, start; i < numVertices && m >= 0; i++ {
+        	rand.Seed(rand.Int63())
+            visited[m] = true
+            child.path = append(child.path, m)
+
+            // get next index
+            nextEdge := smallestAdjecency(m, edgeList, visited)
+
+            if nextEdge >= 0 {
+                m = nextEdge
+            } else {
+                m = getUnvisitedEdge(m, visited, g)
+            }
+        }
+        if len(child.path) == numVertices{
             pathFound = true
             child.fitness = fitness(g, child.path)
         }
@@ -337,11 +382,18 @@ func randomBias(i int, b float64) int {
     return -1
 }
 
+func makeRandomPath(g * Undirected) *Hamiltonian{
+    tour := new(Hamiltonian)
+    tour.path = rand.Perm(g.Order())
+    tour.fitness = fitness(g, tour.path)
+    return tour
+}
+
 func generatepopulation(g *Undirected, populationSize int) []Hamiltonian {
 	population := make([]Hamiltonian, 0, populationSize)
 
 	for i := 0; i < populationSize; i++ {
-		path := makeZeroPath(g)
+		path := makeRandomPath(g)
 		population = binaryAdd(*path, population) 
 	}
 	return population
