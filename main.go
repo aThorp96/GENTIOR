@@ -45,12 +45,12 @@ func main() {
 	var quiet bool
 
 	// declare flags
-	flag.StringVar(&filepath, "f", "data/sgb128/sgb128.dat", "Path to the .dat graph file")
+	flag.StringVar(&filepath, "f", "data/sgb128/sgb128.dat", "Path to the .wdat graph file")
 	flag.IntVar(&populationSize, "p", defualtPopulation, "Population size")
 	flag.IntVar(&generations, "g", defualtGenerations, "Number of generations to run")
-	flag.Float64Var(&bias, "b", defaultBias, "Fitness bias for parent selection, a number between zero and one")
-	flag.BoolVar(&connected, "c", true, "Whether or not the graph is connected")
-	flag.BoolVar(&quiet, "q", false, "Whether or not the graph is connected")
+	flag.Float64Var(&bias, "b", defaultBias, "Fitness bias for parent selection, a number between zero and one **Currently does nothing**")
+	flag.BoolVar(&connected, "c", true, "Whether or not the graph is connected: adds a linear speedup since children don't need to be checked that they are a cycle.")
+	flag.BoolVar(&quiet, "v", true, "Verbose mode: Outputs percent completion")
 
 	// parse flags
 	flag.Parse()
