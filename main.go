@@ -101,6 +101,7 @@ func printProgress(i, n int) {
 }
 
 func ConnectedGentior(filepath string, populationSize, generations int, bias float64, quiet bool) {
+    start := time.Now()
 	// Create graph and population
 	graph := NewWeightedGraphFromFile(filepath)
 	population := generatepopulation(graph, populationSize)
@@ -116,11 +117,11 @@ func ConnectedGentior(filepath string, populationSize, generations int, bias flo
 			printProgress(i, generations)
 		}
 	}
-
+    elapsed := time.Now().Sub(start)
 	fmt.Println()
 	fmt.Println("---------------------- Results ---------------------- ")
 	fmt.Printf("Population: \t%d\t\tGenerations: \t%d\n", populationSize, generations)
-	fmt.Printf("Shortest path:\t%d\n\n", population[0].fitness)
+	fmt.Printf("Shortest path:\t%d\t\tTime: %v\n\n", population[0].fitness, elapsed)
 	fmt.Printf("Sholution: %v\n", population[0].path)
 	fmt.Println("----------------------------------------------------- ")
 }
