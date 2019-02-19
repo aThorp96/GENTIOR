@@ -1,9 +1,9 @@
 import random
 import math
-outputPoints = open("points.txt", "w")
-outputData = open("graph.dat", "w")
+outputPoints = open("200_points.txt", "w")
+outputData = open("200_graph.dat", "w")
 
-numPoints = 100
+numPoints = 200
 maxval = 1000.
 xVals = []
 yVals = []
