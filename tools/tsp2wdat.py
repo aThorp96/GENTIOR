@@ -1,10 +1,16 @@
 import math
 
-outFilename = "./xqf131.wdat"
-outFile = open(outFilename, "w")
+# tsp2wdat transforms a .tsp file into a .wdat (weighted data) file.
+# A .wdat has a header: the number of vertices in the graph, followed by a
+# number of lines descriving each edge. Edges are described by the vertex numbers
+# of each end of the edge, followed by the distance spanned by the edge.
+# Finally, the EOF indicator is the footer "-1 -1 -1"
 
 filename = "./xqf131.tsp"
 edgeFile = open(filename)
+
+outFilename = "./xqf131.wdat"
+outFile = open(outFilename, "w")
 
 string = ""
 

@@ -100,19 +100,20 @@ func printProgress(i, n int) {
 	fmt.Printf("%d%% \n", int(percent))
 }
 
+
 func ConnectedGentior(filepath string, populationSize, generations int, bias float64, quiet bool) {
     start := time.Now()
 	// Create graph and population
-	graph := NewWeightedGraphFromFile(filepath)
-	population := generatepopulation(graph, populationSize)
+	graph := NewWeightedGraphFromFile(filepath) //O(n)
+	population := generatepopulation(graph, populationSize) //O(p)
 
 	// genetically develop good solutions (hopefully)
-	for i := 0; i < generations; i++ {
-		parents := selectParents(len(population), bias)
-		pop := population[parents[0]]
-		mom := population[parents[1]]
-		child := connectedEdgeRecombination(pop, mom, graph)
-		population = reconstructPopulation(population, child)
+	for i := 0; i < generations; i++ { // O(n)
+		parents := selectParents(len(population), bias)         // O(1)
+		pop := population[parents[0]]                           // O(1)
+		mom := population[parents[1]]                           // O(1)
+		child := connectedEdgeRecombination(pop, mom, graph)    // O(n)
+		population = reconstructPopulation(population, child)   // O(logn)
 		if !quiet {
 			printProgress(i, generations)
 		}
@@ -393,6 +394,10 @@ func showPopulation(population []Hamiltonian) {
 }
 
 func selectParents(populationSize int, bias float64) []int {
+	return betterParents(populationSize, bias)
+}
+
+func randomParents(populationSize int, bias float64) []int {
 	// Select at Random
 	// TODO implement bias
 	mom := rand.Intn(populationSize)
@@ -400,11 +405,39 @@ func selectParents(populationSize int, bias float64) []int {
 
 	// ensure parents are different
 	for mom == pop {
-		pop = rand.Intn(populationSize)
+	pop = rand.Intn(populationSize)
 	}
 
 	parentList := []int{pop, mom}
 	return parentList
+}
+
+func betterParents(populationSize int, bias float64) []int {
+	// Select at Random
+	// TODO implement bias
+	mom := betterRand(populationSize, bias)
+	pop := betterRand(populationSize, bias)
+
+	// ensure parents are different
+	for mom == pop {
+	pop = betterRand(populationSize, bias)
+	}
+
+	parentList := []int{pop, mom}
+	return parentList
+}
+
+func betterRand(max int, bias float64) int {
+    // chose two indices
+    n1 := rand.Intn(max)
+    n2 := rand.Intn(max)
+
+    // return the lesser of the two
+    if n1 < n2 {
+        return n1
+    } else {
+        return n2
+    }
 }
 
 //TODO?
