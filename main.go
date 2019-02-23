@@ -26,7 +26,7 @@ type Hamiltonian struct {
 
 	// The optimitality of the solution
 	// The lower the number the shorter the path
-	fitness int
+	fitness float64
 }
 
 func main() {
@@ -89,7 +89,7 @@ func Gentior(filepath string, populationSize, generations int, bias float64, qui
 	fmt.Println()
 	fmt.Println("-------------------- Results -------------------- ")
 	fmt.Printf("Shortest path:\t%d\n\n", population[0].fitness)
-	fmt.Printf("Sholution: %v\n", population[0].path)
+	fmt.Printf("Solution: %v\n", population[0].path)
 	fmt.Println("------------------------------------------------- ")
 }
 
@@ -122,8 +122,8 @@ func ConnectedGentior(filepath string, populationSize, generations int, bias flo
 	fmt.Println()
 	fmt.Println("---------------------- Results ---------------------- ")
 	fmt.Printf("Population: \t%d\t\tGenerations: \t%d\n", populationSize, generations)
-	fmt.Printf("Shortest path:\t%d\t\tTime: %v\n\n", population[0].fitness, elapsed)
-	fmt.Printf("Sholution: %v\n", population[0].path)
+	fmt.Printf("Shortest path:\t%.2f\tTime: %v\n\n", population[0].fitness, elapsed)
+	fmt.Printf("Solution: %v\n", population[0].path)
 	fmt.Println("----------------------------------------------------- ")
 }
 
@@ -560,8 +560,8 @@ func dfs(current int, goal int, visited []bool, depth int, soFar []int, g *Undir
 
 // A fitness evaluator
 // Returns the sum weight of the walk
-func fitness(g *Undirected, walk []int) int {
-	length := 0
+func fitness(g *Undirected, walk []int) float64 {
+	length := 0.0
 	for i := 0; i < len(walk); i++ {
 		n := (i + 1) % len(walk)
 		length += g.Weight(walk[i], walk[n])

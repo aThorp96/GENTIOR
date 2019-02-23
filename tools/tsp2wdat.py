@@ -6,10 +6,10 @@ import math
 # of each end of the edge, followed by the distance spanned by the edge.
 # Finally, the EOF indicator is the footer "-1 -1 -1"
 
-filename = "./xqf131.tsp"
+filename = "./data/att48/att48.tsp"
 edgeFile = open(filename)
 
-outFilename = "./xqf131.wdat"
+outFilename = "./data/att48/att48.wdat"
 outFile = open(outFilename, "w")
 
 string = ""
